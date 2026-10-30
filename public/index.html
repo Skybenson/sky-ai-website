@@ -1,240 +1,170 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#080d1b" />
-  <meta name="description" content="Meet Sky — your personal AI assistant." />
-  <title>Sky AI — Intelligence with Purpose</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css" />
-
-  <style>
-    .welcome-screen { display: block; }
-    .chat-screen { display: none; }
-    .welcome-screen .topbar { position: relative; }
-    .welcome-screen .welcome-hero { min-height: 75vh; }
-    .welcome-screen .welcome-copy { padding: 15px 0; }
-    .welcome-screen .welcome-copy h1 span { color: var(--blue); }
-    .welcome-screen .welcome-copy .eyebrow { line-height: 1.8; }
-    .welcome-screen footer { margin-top: 20px; }
-    .account-note {
-      display: none;
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      color: var(--muted);
-      text-align: center;
-      background: var(--panel);
-    }
-    .account-note.visible { display: block; }
-    .chat-screen .topbar { position: relative; }
-    .back-home {
-      border: 1px solid var(--line);
-      border-radius: 25px;
-      background: var(--panel);
-      color: white;
-      padding: 9px 16px;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080d1a">
+  <meta name="description" content="Meet Sky, your personal AI assistant. Think smarter. Do more.">
+  <title>Sky AI — Intelligence With Purpose</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/app.js" defer></script>
 </head>
-
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
 
-  <!-- WELCOME SCREEN -->
-  <div class="welcome-screen" id="welcomeScreen">
-    <header class="topbar">
-      <a class="brand" href="#home">
-        <span class="brand-mark"><span></span><span></span><span></span></span>
-        <span>sky<span class="brand-light">.ai</span></span>
-      </a>
-      <nav>
-        <a href="#welcomeMessage">About Sky</a>
-        <a href="#contact">Contact</a>
-      </nav>
-      <button class="top-cta" id="topGetStarted" type="button">Get Started ↗</button>
-    </header>
+  <header class="topbar">
+    <a href="/" class="logo" aria-label="Sky AI home">
+      <span class="logo-mark">S</span>
+      <span>SKY<span class="logo-light"> AI</span></span>
+    </a>
+    <div class="header-actions">
+      <button id="loginNav" class="btn btn-outline" type="button">Log In</button>
+      <button id="signupNav" class="btn btn-primary" type="button">Get Started</button>
+      <button id="logoutButton" class="btn btn-outline hidden" type="button">Log Out</button>
+    </div>
+  </header>
 
-    <main>
-      <section class="welcome-hero" id="home">
-        <div class="welcome-copy" id="welcomeMessage">
-          <div class="eyebrow">GOD FIRST. INTELLIGENCE WITH PURPOSE.</div>
+  <main>
 
-          <h1>Meet Sky —<br><span>Your Personal AI Assistant.</span></h1>
-
-          <p>
+    <!-- WELCOME SCREEN -->
+    <section id="welcomeScreen" class="welcome-screen">
+      <div class="hero-content">
+        <div class="hero-text">
+          <p class="eyebrow">GOD FIRST. INTELLIGENCE WITH PURPOSE.</p>
+          <h1>Meet Sky — Your Personal AI Assistant.</h1>
+          <p class="hero-description">
             More than answers, Sky brings ideas to life. Ask questions,
             explore possibilities, solve problems and achieve more with
             an intelligent assistant that's always ready to help.
           </p>
-
-          <p><strong>Think smarter. Do more. Welcome to Sky.</strong></p>
-
-          <div class="welcome-actions">
-            <button class="primary-button" id="getStarted" type="button">
-              Get Started →
+          <p class="hero-tagline">Think smarter. Do more. Welcome to Sky.</p>
+          <div class="hero-actions">
+            <button id="getStartedButton" class="btn btn-primary btn-large" type="button">
+              Get Started
             </button>
-            <button class="secondary-button" id="loginButton" type="button">
+            <button id="welcomeLoginButton" class="btn btn-outline btn-large" type="button">
               Log In
             </button>
           </div>
-
-          <div class="account-note" id="accountNote">
-            Secure email and password account access is the next setup step.
-            Your account is not active yet.
-          </div>
         </div>
 
-        <div>
+        <div class="hero-image-wrap">
           <img
             src="/sky-cover.png"
-            alt="Sky, the fox assistant, working at a computer beneath a GOD FIRST sign"
-          />
+            alt="Sky AI fox mascot at a computer"
+            class="hero-image"
+            onerror="this.style.display='none'"
+          >
         </div>
-      </section>
-    </main>
-
-    <footer id="contact">
-      <div class="brand">
-        <span>sky<span class="brand-light">.ai</span></span>
       </div>
-      <p>GOD FIRST. Intelligence with purpose.</p>
-      <div class="contact-links">
-        <a href="https://t.me/skyben_SON" target="_blank" rel="noopener">Telegram</a>
-        <a href="https://x.com/xskybenson" target="_blank" rel="noopener">Twitter / X</a>
-        <a href="tel:+2348026377708">Call Sky</a>
+    </section>
+
+    <!-- AUTHENTICATION SCREEN -->
+    <section id="authScreen" class="auth-screen hidden">
+      <div class="auth-card">
+        <div class="auth-brand">S</div>
+        <p class="eyebrow">WELCOME TO SKY</p>
+        <h2 id="authTitle">Create your account</h2>
+        <p id="authDescription">Your personal AI assistant is waiting for you.</p>
+
+        <form id="authForm">
+          <label for="authEmail">Email address</label>
+          <input
+            id="authEmail"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          >
+
+          <label for="authPassword">Password</label>
+          <input
+            id="authPassword"
+            type="password"
+            placeholder="At least 8 characters"
+            minlength="8"
+            autocomplete="current-password"
+            required
+          >
+
+          <button id="authSubmit" class="btn btn-primary btn-full" type="submit">
+            Create Account
+          </button>
+        </form>
+
+        <p id="authMessage" class="status-message" role="status"></p>
+
+        <p class="auth-switch">
+          <span id="authSwitchText">Already have an account?</span>
+          <button id="authSwitchButton" class="text-button" type="button">Log In</button>
+        </p>
+
+        <button id="backHomeButton" class="text-button back-button" type="button">
+          ← Back to welcome page
+        </button>
       </div>
-      <p>© <span id="year"></span> Sky AI. All rights reserved.</p>
-    </footer>
-  </div>
+    </section>
 
-  <!-- CHAT SCREEN -->
-  <div class="chat-screen" id="chatScreen">
-    <header class="topbar">
-      <a class="brand" href="#home">
-        <span class="brand-mark"><span></span><span></span><span></span></span>
-        <span>sky<span class="brand-light">.ai</span></span>
-      </a>
-      <button class="back-home" id="backHome" type="button">← Welcome</button>
-    </header>
+    <!-- CHAT SCREEN -->
+    <section id="chatScreen" class="chat-screen hidden">
+      <aside class="chat-sidebar">
+        <button id="newChatButton" class="btn btn-primary btn-full" type="button">
+          + New Chat
+        </button>
+        <h3>Your Conversations</h3>
+        <div id="chatHistory" class="chat-history">
+          <p class="muted">Your saved conversations will appear here.</p>
+        </div>
+      </aside>
 
-    <main>
-      <section class="chat-section" id="chat">
-        <div class="section-heading">
+      <section class="chat-main">
+        <div class="chat-heading">
           <div>
-            <div class="eyebrow">THE CONVERSATION STARTS HERE</div>
-            <h2>Ask Sky anything.</h2>
+            <p class="eyebrow">YOUR PERSONAL AI ASSISTANT</p>
+            <h2>Chat with Sky</h2>
           </div>
-          <div class="online-status">
-            <span class="pulse"></span>
-            <span id="statusText">Checking connection…</span>
+          <span id="statusText" class="status-indicator">Connecting...</span>
+        </div>
+
+        <div id="messages" class="messages">
+          <div id="chatWelcome" class="chat-welcome">
+            <div class="auth-brand">S</div>
+            <h2>Where shall we begin?</h2>
+            <p>Ask a question, share an idea, or tell me what you're working on.</p>
+            <div class="suggestions">
+              <button class="suggestion" type="button">Help me plan a new project</button>
+              <button class="suggestion" type="button">Explain a difficult concept</button>
+              <button class="suggestion" type="button">Give me ideas for my business</button>
+            </div>
           </div>
         </div>
 
-        <div class="chat-shell">
-          <aside class="chat-sidebar">
-            <div class="sidebar-brand">
-              <span class="brand-mark small"><span></span><span></span><span></span></span>
-              <b>Sky assistant</b>
-            </div>
-
-            <button class="new-chat" id="newChat" type="button">
-              <span>＋</span> New conversation
-            </button>
-
-            <div class="sidebar-note">
-              <span class="note-icon">✧</span>
-              <b>A little about Sky</b>
-              <p>Thoughtful answers, clear explanations, and an honest approach to every question.</p>
-            </div>
-
-            <div class="sidebar-bottom">YOUR SPACE TO THINK BIGGER</div>
-          </aside>
-
-          <div class="chat-main">
-            <div class="chat-top">
-              <div class="chat-title">
-                <span class="avatar">S</span>
-                <div><b>Sky</b><small>AI assistant</small></div>
-              </div>
-              <span class="secure-label">✧ Private session</span>
-            </div>
-
-            <div class="messages" id="messages" aria-live="polite">
-              <div class="welcome" id="welcome">
-                <div class="welcome-icon">
-                  <span class="brand-mark"><span></span><span></span><span></span></span>
-                </div>
-                <div class="welcome-kicker">HELLO, I'M SKY</div>
-                <h3>Where shall we<br><span>begin?</span></h3>
-                <p>Ask me a question, share an idea, or tell me what you're working on.</p>
-                <div class="suggestions">
-                  <button class="suggestion" type="button">Help me plan a new project <span>↗</span></button>
-                  <button class="suggestion" type="button">Explain a difficult concept <span>↗</span></button>
-                  <button class="suggestion" type="button">Give me ideas for my business <span>↗</span></button>
-                </div>
-              </div>
-            </div>
-
-            <form class="composer" id="chatForm">
-              <textarea id="prompt" rows="1" maxlength="8000"
-                placeholder="Message Sky…" aria-label="Message Sky"></textarea>
-              <div class="composer-bottom">
-                <span><kbd>Enter</kbd> to send · <kbd>Shift + Enter</kbd> for a new line</span>
-                <button class="send-button" id="sendButton" type="submit" aria-label="Send message">↑</button>
-              </div>
-            </form>
-
-            <div class="disclaimer">
-              Sky can make mistakes. Check important information independently.
-            </div>
-          </div>
-        </div>
+        <form id="chatForm" class="chat-form">
+          <textarea
+            id="prompt"
+            placeholder="Message Sky..."
+            rows="1"
+            maxlength="8000"
+            required
+          ></textarea>
+          <button id="sendButton" class="btn btn-primary" type="submit">Send</button>
+        </form>
+        <p class="chat-disclaimer">Sky can make mistakes. Check important information.</p>
       </section>
-    </main>
+    </section>
 
-    <footer>
-      <span>© <span id="chatYear"></span> Sky AI</span>
-      <span>Think smarter. Do more.</span>
-    </footer>
-  </div>
+  </main>
 
-  <script>
-    const welcomeScreen = document.getElementById("welcomeScreen");
-    const chatScreen = document.getElementById("chatScreen");
+  <footer class="site-footer">
+    <p>GOD FIRST. INTELLIGENCE WITH PURPOSE.</p>
+    <div class="footer-links">
+      <a href="https://t.me/skyben_SON" target="_blank" rel="noopener noreferrer">Telegram</a>
+      <a href="https://x.com/xskybenson" target="_blank" rel="noopener noreferrer">Twitter / X</a>
+      <a href="tel:+2348026377708">+234 802 637 7708</a>
+    </div>
+    <p>© <span id="year">2026</span> Sky AI. All rights reserved.</p>
+  </footer>
 
-    function showChat() {
-      welcomeScreen.style.display = "none";
-      chatScreen.style.display = "block";
-      window.scrollTo(0, 0);
-    }
-
-    function showWelcome() {
-      chatScreen.style.display = "none";
-      welcomeScreen.style.display = "block";
-      window.scrollTo(0, 0);
-    }
-
-    document.getElementById("getStarted").addEventListener("click", showChat);
-    document.getElementById("topGetStarted").addEventListener("click", showChat);
-    document.getElementById("backHome").addEventListener("click", showWelcome);
-
-    document.getElementById("loginButton").addEventListener("click", function() {
-      const note = document.getElementById("accountNote");
-      note.classList.toggle("visible");
-    });
-
-    document.getElementById("year").textContent = new Date().getFullYear();
-    document.getElementById("chatYear").textContent = new Date().getFullYear();
-  </script>
-
-  <script src="/app.js"></script>
 </body>
 </html>
