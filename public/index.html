@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080d1b" />
+  <meta name="description" content="Meet Sky — your intelligent, helpful AI assistant." />
+  <title>Sky AI — Think clearly. Go further.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Sky AI home">
+      <span class="brand-mark"><span></span><span></span><span></span></span>
+      <span>sky<span class="brand-light">.ai</span></span>
+    </a>
+    <nav><a href="#about">About Sky</a><a href="#features">Features</a></nav>
+    <a class="top-cta" href="#chat">Talk to Sky <span>↗</span></a>
+  </header>
+
+  <main>
+    <section class="hero" id="about">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span> YOUR AI, READY WHEN YOU ARE</div>
+        <h1>A clearer way<br>to <span>think bigger.</span></h1>
+        <p class="hero-description">Meet Sky — an intelligent assistant built to understand your questions, explore ideas, and help you move forward.</p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#chat">Start a conversation <span>→</span></a>
+          <a class="text-button" href="#features">Discover Sky <span>↓</span></a>
+        </div>
+        <div class="trust-line"><span class="mini-stars">✳</span> Curious by nature. Honest by design.</div>
+      </div>
+      <div class="hero-art" aria-label="Abstract glowing Sky AI orb">
+        <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
+        <div class="orb"><div class="orb-core"></div><div class="orb-shine"></div></div>
+        <div class="art-label"><span class="pulse"></span><div><b>SKY IS HERE</b><small>Ready to help you explore</small></div></div>
+        <div class="floating-chip chip-one">✦ &nbsp;Ideas, made clearer</div>
+        <div class="floating-chip chip-two">◌ &nbsp;Always learning</div>
+      </div>
+    </section>
+
+    <section class="chat-section" id="chat">
+      <div class="section-heading">
+        <div><div class="eyebrow">THE CONVERSATION STARTS HERE</div><h2>Ask Sky anything.</h2></div>
+        <div class="online-status"><span class="pulse"></span> <span id="statusText">Checking connection…</span></div>
+      </div>
+      <div class="chat-shell">
+        <aside class="chat-sidebar">
+          <div class="sidebar-brand"><span class="brand-mark small"><span></span><span></span><span></span></span><b>Sky assistant</b></div>
+          <button class="new-chat" id="newChat"><span>＋</span> New conversation</button>
+          <div class="sidebar-note"><span class="note-icon">✧</span><b>A little about Sky</b><p>Thoughtful answers, clear explanations, and an honest approach to every question.</p></div>
+          <div class="sidebar-bottom">YOUR SPACE TO THINK BIGGER</div>
+        </aside>
+        <div class="chat-main">
+          <div class="chat-top"><div class="chat-title"><span class="avatar">S</span><div><b>Sky</b><small>AI assistant</small></div></div><span class="secure-label">✧ &nbsp;Private session</span></div>
+          <div class="messages" id="messages" aria-live="polite">
+            <div class="welcome" id="welcome">
+              <div class="welcome-icon"><span class="brand-mark"><span></span><span></span><span></span></span></div>
+              <div class="welcome-kicker">HELLO, I'M SKY</div>
+              <h3>Where shall we<br><span>begin?</span></h3>
+              <p>Ask me a question, share an idea, or tell me what you're working on.</p>
+              <div class="suggestions">
+                <button class="suggestion">Help me plan a new project <span>↗</span></button>
+                <button class="suggestion">Explain a difficult concept <span>↗</span></button>
+                <button class="suggestion">Give me ideas for my business <span>↗</span></button>
+              </div>
+            </div>
+          </div>
+          <form class="composer" id="chatForm">
+            <textarea id="prompt" rows="1" maxlength="8000" placeholder="Message Sky…" aria-label="Message Sky"></textarea>
+            <div class="composer-bottom"><span><kbd>Enter</kbd> to send · <kbd>Shift + Enter</kbd> for a new line</span><button class="send-button" id="sendButton" type="submit" aria-label="Send message">↑</button></div>
+          </form>
+          <div class="disclaimer">Sky can make mistakes. Check important information independently.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="eyebrow">BUILT AROUND YOU</div><h2>More than an answer.<br><span>A thinking partner.</span></h2>
+      <div class="feature-grid">
+        <article class="feature-card"><div class="feature-icon">✧</div><h3>Understand deeply</h3><p>Ask naturally. Sky is designed to understand context and make complex questions easier to explore.</p></article>
+        <article class="feature-card"><div class="feature-icon">⌁</div><h3>Think it through</h3><p>Work through ideas, compare options, and get clear explanations that help you make progress.</p></article>
+        <article class="feature-card"><div class="feature-icon">◈</div><h3>Stay honest</h3><p>Sky aims to be useful and transparent, including when an answer is uncertain or needs checking.</p></article>
+      </div>
+    </section>
+  </main>
+  <footer><a class="brand" href="#"><span class="brand-mark"><span></span><span></span><span></span></span><span>sky<span class="brand-light">.ai</span></span></a><span>Think clearly. Go further.</span><span>© <span id="year"></span> Sky AI</span></footer>
+  <script src="/app.js"></script>
+</body>
+</html>
