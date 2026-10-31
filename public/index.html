@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d19">
+  <meta name="description" content="Sky — Your Personal AI Assistant. Intelligence with purpose.">
+  <title>Sky — Your Personal AI Assistant</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/app.js?v=3.0" defer></script>
+</head>
+<body>
+  <div id="bootScreen" class="boot-screen">
+    <img src="/sky-logo.png" alt="Sky" onerror="this.style.display='none'">
+    <div class="boot-mark">S</div><p>SKY</p><span class="loader"></span>
+  </div>
+  <section id="welcomeScreen" class="welcome-screen hidden">
+    <header class="topbar">
+      <a class="brand" href="#"><img src="/sky-logo.png" alt="Sky logo" onerror="this.style.display='none'"><span>SKY</span></a>
+      <div class="top-actions"><button id="loginNav" class="button ghost">Log in</button><button id="signupNav" class="button primary">Get started</button></div>
+    </header>
+    <main class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">GOD FIRST. INTELLIGENCE WITH PURPOSE.</div>
+        <h1>Meet Sky — Your Personal AI Assistant.</h1>
+        <p class="hero-lead">More than answers, Sky brings ideas to life. Ask questions, explore possibilities, solve problems and achieve more with an intelligent assistant that's always ready to help.</p>
+        <p class="hero-last">Think smarter. Do more. Welcome to Sky.</p>
+        <div class="hero-actions"><button id="getStartedButton" class="button primary large">Get started <span>→</span></button><button id="welcomeLoginButton" class="button ghost large">I already have an account</button></div>
+      </div>
+      <div class="hero-art"><img src="/sky-cover.png" alt="Sky assistant artwork" onerror="this.style.display='none'"><div class="art-fallback"><span>✦</span><b>SKY</b><small>INTELLIGENCE WITH PURPOSE</small></div></div>
+    </main>
+    <footer class="site-footer"><span>© <span id="year"></span> Sky AI</span><div><a href="https://t.me/skyben_SON" target="_blank" rel="noreferrer">Telegram</a><a href="https://x.com/xskybenson" target="_blank" rel="noreferrer">X</a><a href="tel:+2348026377708">+234 802 637 7708</a></div></footer>
+  </section>
+  <section id="authScreen" class="auth-screen hidden">
+    <button id="backHomeButton" class="back-button">← Back to home</button>
+    <div class="auth-card">
+      <div class="auth-brand"><img src="/sky-logo.png" alt="" onerror="this.style.display='none'"><span>SKY</span></div>
+      <h1 id="authTitle">Welcome back</h1><p id="authDescription">Sign in to continue your conversations.</p>
+      <form id="authForm">
+        <label>Email address<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+        <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="At least 8 characters" required></label>
+        <button id="authSubmit" class="button primary full" type="submit">Log in</button>
+      </form>
+      <p id="authMessage" class="form-message" aria-live="polite"></p>
+      <p class="switch-line"><span id="authSwitchText">New to Sky?</span> <button id="authSwitchButton" class="text-button">Create an account</button></p>
+    </div>
+  </section>
+  <section id="chatScreen" class="chat-screen hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="side-head"><a class="brand" href="#"><img src="/sky-logo.png" alt="" onerror="this.style.display='none'"><span>SKY</span></a><button id="closeSidebar" class="icon-button mobile-only" aria-label="Close menu">×</button></div>
+      <button id="newChatButton" class="new-chat"><span>＋</span> New chat</button>
+      <div class="history-label">YOUR CHATS</div><div id="chatHistory" class="chat-history"></div>
+      <div class="side-bottom"><div id="userEmail" class="user-email"></div><button id="logoutButton" class="logout-button">↪ Sign out</button></div>
+    </aside>
+    <main class="chat-main">
+      <header class="chat-topbar"><button id="openSidebar" class="icon-button" aria-label="Open menu">☰</button><div class="chat-title"><span>Sky</span><small id="statusText">Connecting to AI…</small></div><div class="online-dot"></div></header>
+      <div id="messages" class="messages">
+        <div id="chatWelcome" class="chat-welcome"><div class="welcome-symbol">✦</div><h1>What can I help you with?</h1><p>Your Sky workspace is ready.</p><div class="suggestions"><button class="suggestion" data-prompt="Help me plan my week.">Plan my week</button><button class="suggestion" data-prompt="Explain a difficult topic in simple terms.">Explain something</button><button class="suggestion" data-prompt="Help me write and debug some code.">Write code</button></div></div>
+      </div>
+      <div class="composer-wrap">
+        <div id="attachmentPreview" class="attachment-preview"></div>
+        <form id="chatForm" class="composer">
+          <input id="fileInput" type="file" hidden multiple accept="image/*,.pdf,.txt,.md,.csv,.json,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
+          <button type="button" id="attachButton" class="tool-button" title="Select a file (not sent to AI yet)" aria-label="Select files">＋</button>
+          <textarea id="prompt" rows="1" maxlength="8000" placeholder="Message Sky…" aria-label="Message Sky"></textarea>
+          <button type="button" id="voiceButton" class="tool-button" title="Voice input" aria-label="Voice input">🎙</button>
+          <button type="submit" id="sendButton" class="send-button" aria-label="Send message">↑</button>
+        </form>
+        <div class="composer-tools"><span class="free-note">Free AI model · Daily request limits apply. File analysis is not enabled.</span></div>
+      </div>
+    </main>
+  </section>
+</body>
+</html>
