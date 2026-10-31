@@ -1,3 +1,4 @@
+
 (() => {
   const $ = id => document.getElementById(id);
   const screens = ["welcomeScreen", "authScreen", "chatScreen"];
@@ -110,21 +111,51 @@
     $("chatWelcome").classList.remove("hidden");
   }
 
+  // UPDATED FUNCTION: opens and displays the selected saved conversation.
   async function openConversation(id) {
     currentConversation = id;
     renderHistory();
-    const { data, error } = await supabaseClient.from("messages")
-      .select("*").eq("conversation_id", id).order("created_at", { ascending: true });
-    if (error) {
-      addMessage(`Couldn't load this chat: ${error.message}`);
-      return;
-    }
-    $("messages").replaceChildren();
-    if (!data?.length) {
-      $("messages").appendChild($("chatWelcome"));
-      $("chatWelcome").classList.remove("hidden");
-    } else {
-      data.forEach(m => addMessage(m.content, m.role));
+
+    const messagesBox = $("messages");
+    messagesBox.replaceChildren();
+
+    const loadingMessage = document.createElement("div");
+    loadingMessage.className = "message assistant";
+    loadingMessage.textContent = "Loading conversation...";
+    messagesBox.appendChild(loadingMessage);
+
+    try {
+      const { data, error } = await supabaseClient
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      // Do not display results from an older request if another chat was selected.
+      if (currentConversation !== id) return;
+
+      messagesBox.replaceChildren();
+
+      if (!data || data.length === 0) {
+        messagesBox.appendChild($("chatWelcome"));
+        $("chatWelcome").classList.remove("hidden");
+      } else {
+        data.forEach(message => {
+          addMessage(message.content, message.role);
+        });
+      }
+
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+
+    } catch (error) {
+      console.error("Could not open conversation:", error);
+
+      if (currentConversation === id) {
+        messagesBox.replaceChildren();
+        addMessage(`Couldn't load this chat: ${error.message || "Please try again."}`);
+      }
     }
   }
 
