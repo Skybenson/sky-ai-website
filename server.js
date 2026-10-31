@@ -26,7 +26,7 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     mode: "openrouter-free",
     aiEnabled: Boolean(process.env.OPENROUTER_API_KEY),
-    routineBuilderEnabled: Boolean(process.env.OPENROUTER_API_KEY)
+    routineBuilderEnabled: true
   });
 });
 
@@ -76,9 +76,7 @@ async function askFreeModel(messages, maxTokens = 1000, temperature = 0.65) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    const error = new Error(
-      "Sky's AI connection is not configured yet."
-    );
+    const error = new Error("Sky's AI connection is not configured yet.");
     error.status = 503;
     throw error;
   }
@@ -106,7 +104,7 @@ async function askFreeModel(messages, maxTokens = 1000, temperature = 0.65) {
   if (!response.ok) {
     const error = new Error(
       response.status === 429
-        ? "Sky has reached the free model's request limit. Please try again later."
+        ? "Sky has reached the free AI request limit. Please try again later."
         : data?.error?.message ||
           "The free AI service is temporarily unavailable."
     );
@@ -115,12 +113,17 @@ async function askFreeModel(messages, maxTokens = 1000, temperature = 0.65) {
     throw error;
   }
 
-  const answer = data?.choices?.[0]?.message?.content;
+  let answer = data?.choices?.[0]?.message?.content;
+
+  // Some models return content as an array instead of plain text.
+  if (Array.isArray(answer)) {
+    answer = answer
+      .map(part => typeof part === "string" ? part : part?.text || "")
+      .join("");
+  }
 
   if (typeof answer !== "string" || !answer.trim()) {
-    const error = new Error(
-      "The AI model returned an empty answer. Please try again."
-    );
+    const error = new Error("The AI returned an empty response.");
     error.status = 502;
     throw error;
   }
@@ -186,10 +189,11 @@ HOW TO HELP
 
 SKY ROUTINE BUILDER
 - Sky helps people create personalized daily routines.
-- When users discuss their routines, help them organize activities, times, rest, study, work and personal priorities.
-- Users should be able to change their routines whenever they want.
+- Users can make a routine by typing a short request such as "workout routine", "morning routine", "study plan" or "daily routine".
+- Never demand a long description before helping.
+- When users discuss their routines, help organize activities, times, rest, study, work and personal priorities.
+- Users can change their routines in the Routine Builder workspace.
 - Do not claim a routine has been saved unless it has actually been saved through the website.
-- If a user wants a structured routine, explain that they can use the Routine Builder workspace.
 
 HONESTY AND PRIVACY
 - Never invent facts, actions, sources or capabilities.
@@ -238,13 +242,84 @@ function extractJSON(text) {
   const end = cleaned.lastIndexOf("}");
 
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error("Sky couldn't create a valid routine. Please try again.");
+    throw new Error("No valid routine data was returned.");
   }
 
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-// NEW: AI ROUTINE GENERATION endpoint.
+// Simple starter routines for when the free AI model is unavailable.
+function getStarterRoutine(description) {
+  const request = description.toLowerCase();
+
+  let title = "My Daily Routine";
+  let items = [];
+
+  if (/workout|gym|fitness|exercise|muscle|weight loss/.test(request)) {
+    title = "My Workout Routine";
+    items = [
+      ["Warm up", "Walk gently and prepare your muscles.", "06:30"],
+      ["Main workout", "Complete a suitable beginner-friendly workout.", "06:40"],
+      ["Cool down", "Stretch gently and slow your breathing.", "07:15"],
+      ["Hydrate", "Drink water and rest.", "07:25"]
+    ];
+  } else if (/study|reading|exam|school|learn/.test(request)) {
+    title = "My Study Routine";
+    items = [
+      ["Morning preparation", "Get ready and organize your study materials.", "07:00"],
+      ["Study session 1", "Focus on your most important subject.", "08:00"],
+      ["Short break", "Rest your mind.", "09:00"],
+      ["Study session 2", "Continue learning and taking notes.", "09:15"],
+      ["Review", "Go over what you have learned.", "10:15"]
+    ];
+  } else if (/morning/.test(request)) {
+    title = "My Morning Routine";
+    items = [
+      ["Wake up", "Get out of bed and freshen up.", "06:00"],
+      ["Prayer or quiet time", "Take a moment for reflection.", "06:10"],
+      ["Wash up", "Brush your teeth and wash your face.", "06:25"],
+      ["Exercise", "Move your body with light exercise.", "06:40"],
+      ["Breakfast", "Have a nourishing breakfast.", "07:15"],
+      ["Plan the day", "Review your priorities.", "07:40"]
+    ];
+  } else if (/evening|night/.test(request)) {
+    title = "My Evening Routine";
+    items = [
+      ["Tidy up", "Put away things and prepare your space.", "18:00"],
+      ["Dinner", "Enjoy your evening meal.", "18:30"],
+      ["Personal time", "Relax or enjoy a hobby.", "19:00"],
+      ["Prepare for tomorrow", "Organize clothes and important tasks.", "20:00"],
+      ["Wind down", "Reduce screen time and relax.", "21:00"],
+      ["Bedtime", "Get ready for sleep.", "22:00"]
+    ];
+  } else {
+    items = [
+      ["Wake up", "Get up and freshen up.", "06:30"],
+      ["Personal time", "Pray, reflect, or enjoy a quiet moment.", "06:45"],
+      ["Exercise", "Move your body and stay active.", "07:00"],
+      ["Breakfast", "Have a nourishing breakfast.", "07:45"],
+      ["Main priorities", "Work on your most important tasks.", "08:30"],
+      ["Break", "Take time to rest.", "10:30"],
+      ["Afternoon tasks", "Continue with your daily responsibilities.", "12:00"],
+      ["Relax", "Make time for yourself.", "17:00"],
+      ["Prepare for tomorrow", "Organize your plans for the next day.", "20:00"],
+      ["Bedtime", "Wind down and get enough sleep.", "22:00"]
+    ];
+  }
+
+  return {
+    title,
+    description: `A simple starter plan based on your request: ${description}`,
+    items: items.map((item, index) => ({
+      title: item[0],
+      description: item[1],
+      scheduled_time: item[2],
+      position: index
+    }))
+  };
+}
+
+// Routine generation endpoint.
 app.post("/api/routines/generate", async (req, res) => {
   try {
     await verifyUser(req);
@@ -256,7 +331,7 @@ app.post("/api/routines/generate", async (req, res) => {
 
     if (!description) {
       return res.status(400).json({
-        error: "Please describe the routine you want Sky to create."
+        error: "Tell Sky what kind of routine you want, for example: Workout routine."
       });
     }
 
@@ -267,88 +342,85 @@ app.post("/api/routines/generate", async (req, res) => {
     }
 
     const routineInstructions = `
-You are Sky's Personal Routine Builder.
+You are Sky's simple and helpful Personal Routine Builder.
 
-Your task is to transform a person's daily-life requirements into a practical, realistic and personalized routine.
+The user may give you only two or three words, such as:
+- Workout routine
+- Morning routine
+- Study plan
+- Evening routine
+- Fitness plan
+- Daily routine
 
-RULES:
-- Respect the user's requested wake-up time, bedtime and fixed commitments.
-- Include requested activities.
-- Make the schedule realistic, with reasonable breaks and transition time.
-- Do not schedule two activities at the same time.
-- Do not invent important personal commitments.
-- If the user does not specify exact times, propose sensible times.
-- Use 24-hour time in HH:MM format.
-- Return between 1 and 40 activities.
-- Give each activity a short, useful title.
-- Descriptions should be brief and helpful.
-- Keep the routine balanced and avoid unrealistic schedules.
+IMPORTANT:
+- Do not ask the user to provide more details.
+- Do not demand a long description.
+- Understand the short request and create a useful starter routine immediately.
+- If the user does not specify times, choose sensible suggested times.
+- If the user does not specify their experience level, make the plan beginner-friendly.
+- Keep activities practical, clear and realistic.
+- Include short breaks where appropriate.
+- Do not create an unnecessarily long routine.
+- Respect any specific times or activities the user mentions.
+- For workouts, include a warm-up, suitable exercises, a cool-down and rest.
+- Avoid extreme exercise or unsafe instructions.
 
-OUTPUT:
-Return ONLY valid JSON.
-Do not use Markdown code fences.
-Do not add explanations outside the JSON.
+Return ONLY valid JSON, without Markdown or explanations.
 
 Use exactly this structure:
 
 {
-  "title": "My Daily Routine",
-  "description": "A short description of the routine",
+  "title": "My Workout Routine",
+  "description": "A short description",
   "items": [
     {
-      "title": "Wake up",
-      "description": "Get out of bed and freshen up",
-      "scheduled_time": "05:30",
+      "title": "Warm up",
+      "description": "Prepare your body for exercise",
+      "scheduled_time": "06:30",
       "position": 0
     }
   ]
 }
 
-IMPORTANT:
-- Every item must have a title.
-- scheduled_time must be HH:MM in 24-hour format, or null if no reasonable time can be assigned.
-- position must start at 0 and increase by 1.
-- Return JSON only.
+Return between 3 and 12 activities.
+Use 24-hour time in HH:MM format.
+Use null for a time only if no reasonable time can be suggested.
+Positions must start at 0 and increase by 1.
 `;
-
-    const answer = await askFreeModel(
-      [
-        {
-          role: "system",
-          content: routineInstructions
-        },
-        {
-          role: "user",
-          content: description
-        }
-      ],
-      1800,
-      0.4
-    );
 
     let routine;
 
     try {
+      const answer = await askFreeModel(
+        [
+          { role: "system", content: routineInstructions },
+          { role: "user", content: description }
+        ],
+        2000,
+        0.3
+      );
+
       routine = extractJSON(answer);
-    } catch {
-      return res.status(502).json({
-        error: "Sky couldn't format the routine correctly. Please try generating it again."
-      });
+
+    } catch (aiError) {
+      console.error(
+        "AI routine generation unavailable; using starter routine:",
+        aiError.message
+      );
+
+      routine = getStarterRoutine(description);
     }
 
     if (
       !routine ||
       typeof routine.title !== "string" ||
       !Array.isArray(routine.items) ||
-      routine.items.length === 0 ||
-      routine.items.length > 40
+      routine.items.length === 0
     ) {
-      return res.status(502).json({
-        error: "Sky returned an incomplete routine. Please try again."
-      });
+      routine = getStarterRoutine(description);
     }
 
-    const items = routine.items.map((item, index) => {
+    const items = routine.items.slice(0, 40).map((item, index) => {
       const time =
         typeof item.scheduled_time === "string" &&
         /^([01]\d|2[0-3]):[0-5]\d$/.test(item.scheduled_time)
@@ -356,14 +428,12 @@ IMPORTANT:
           : null;
 
       return {
-        title:
-          typeof item.title === "string"
-            ? item.title.slice(0, 150)
-            : `Activity ${index + 1}`,
-        description:
-          typeof item.description === "string"
-            ? item.description.slice(0, 500)
-            : "",
+        title: typeof item.title === "string"
+          ? item.title.slice(0, 150)
+          : `Activity ${index + 1}`,
+        description: typeof item.description === "string"
+          ? item.description.slice(0, 500)
+          : "",
         scheduled_time: time,
         position: index
       };
@@ -372,10 +442,9 @@ IMPORTANT:
     return res.json({
       routine: {
         title: routine.title.slice(0, 120),
-        description:
-          typeof routine.description === "string"
-            ? routine.description.slice(0, 500)
-            : "",
+        description: typeof routine.description === "string"
+          ? routine.description.slice(0, 500)
+          : "",
         items
       }
     });
@@ -386,7 +455,7 @@ IMPORTANT:
     return res.status(error.status || 500).json({
       error: error.status
         ? error.message
-        : "Sky couldn't generate your routine. Please try again."
+        : "Sky couldn't create your routine. Please try again."
     });
   }
 });
