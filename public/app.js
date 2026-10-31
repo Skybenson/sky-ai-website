@@ -1,4 +1,3 @@
-
 (() => {
   const $ = id => document.getElementById(id);
 
@@ -13,6 +12,12 @@
   let recognition = null;
   let conversationLoadNumber = 0;
 
+  // Routine Builder state
+  let routines = [];
+  let selectedRoutineId = null;
+  let routineItems = [];
+  let routineLogs = {};
+
   const show = id => {
     screens.forEach(screen => {
       const element = $(screen);
@@ -20,6 +25,24 @@
     });
     $("sidebar")?.classList.remove("open");
   };
+
+  // Switch between the Chat and Routine Builder workspaces.
+  function showWorkspace(workspace) {
+    const chat = $("chatWorkspace");
+    const routine = $("routineWorkspace");
+
+    if (chat) chat.classList.toggle("hidden", workspace !== "chat");
+    if (routine) routine.classList.toggle("hidden", workspace !== "routine");
+
+    $("chatTabButton")?.classList.toggle("active", workspace === "chat");
+    $("routineTabButton")?.classList.toggle("active", workspace === "routine");
+
+    if (workspace === "routine") {
+      loadRoutines();
+    }
+
+    $("sidebar")?.classList.remove("open");
+  }
 
   function addMessage(text, role = "assistant", files = []) {
     const messagesBox = $("messages");
@@ -74,6 +97,614 @@
     messagesBox.replaceChildren(welcome);
     welcome.classList.remove("hidden");
   }
+
+  // Date helper uses the user's local calendar date.
+  function localDate(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function tomorrowDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return localDate(date);
+  }
+
+  function showRoutineMessage(message, isError = false) {
+    const element = $("routineGenerateMessage");
+    if (!element) return;
+
+    element.textContent = message;
+    element.classList.toggle("error", isError);
+  }
+
+  // ---------- ROUTINE BUILDER ----------
+
+  async function loadRoutines() {
+    if (!session || !supabaseClient) return;
+
+    const list = $("routineList");
+    if (list) {
+      list.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "routine-empty";
+      loading.textContent = "Loading your routines...";
+      list.appendChild(loading);
+    }
+
+    const { data, error } = await supabaseClient
+      .from("routines")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Routine loading error:", error);
+      if (list) {
+        list.replaceChildren();
+        const message = document.createElement("p");
+        message.className = "routine-empty";
+        message.textContent = "Couldn't load routines: " + error.message;
+        list.appendChild(message);
+      }
+      return;
+    }
+
+    routines = data || [];
+    renderRoutines();
+
+    if (selectedRoutineId && routines.some(r => r.id === selectedRoutineId)) {
+      await selectRoutine(selectedRoutineId);
+    } else if (routines.length) {
+      await selectRoutine(routines[0].id);
+    } else {
+      selectedRoutineId = null;
+      routineItems = [];
+      routineLogs = {};
+      renderRoutineActivities();
+    }
+  }
+
+  function renderRoutines() {
+    const list = $("routineList");
+    if (!list) return;
+
+    list.replaceChildren();
+
+    if (!routines.length) {
+      const empty = document.createElement("p");
+      empty.className = "routine-empty";
+      empty.textContent = "You haven't created a routine yet. Describe your goals above to build your first one.";
+      list.appendChild(empty);
+      return;
+    }
+
+    routines.forEach(routine => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "routine-card";
+      if (routine.id === selectedRoutineId) {
+        card.classList.add("selected");
+      }
+
+      const title = document.createElement("strong");
+      title.textContent = routine.title || "Untitled routine";
+
+      const description = document.createElement("span");
+      description.textContent = routine.description || "Your personal routine";
+
+      card.append(title, description);
+      card.onclick = () => selectRoutine(routine.id);
+
+      list.appendChild(card);
+    });
+  }
+
+  async function selectRoutine(id) {
+    if (!session || !supabaseClient || !id) return;
+
+    selectedRoutineId = id;
+    renderRoutines();
+
+    const titleElement = $("selectedRoutineTitle");
+    if (titleElement) {
+      const selected = routines.find(r => r.id === id);
+      titleElement.textContent = selected?.title || "Your routine";
+    }
+
+    const activityBox = $("routineActivities");
+    if (activityBox) {
+      activityBox.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "routine-empty";
+      loading.textContent = "Loading activities...";
+      activityBox.appendChild(loading);
+    }
+
+    const { data, error } = await supabaseClient
+      .from("routine_items")
+      .select("*")
+      .eq("routine_id", id)
+      .eq("user_id", session.user.id)
+      .order("position", { ascending: true });
+
+    if (error) {
+      console.error("Routine activities error:", error);
+      if (activityBox) {
+        activityBox.replaceChildren();
+        const message = document.createElement("p");
+        message.className = "routine-empty";
+        message.textContent = "Couldn't load activities: " + error.message;
+        activityBox.appendChild(message);
+      }
+      return;
+    }
+
+    routineItems = data || [];
+    routineLogs = {};
+
+    if (routineItems.length) {
+      const itemIds = routineItems.map(item => item.id);
+
+      const { data: logs, error: logError } = await supabaseClient
+        .from("routine_item_logs")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("scheduled_date", localDate())
+        .in("routine_item_id", itemIds);
+
+      if (logError) {
+        console.error("Routine progress loading error:", logError);
+      } else {
+        (logs || []).forEach(log => {
+          routineLogs[log.routine_item_id] = log;
+        });
+      }
+    }
+
+    renderRoutineActivities();
+  }
+
+  function renderRoutineActivities() {
+    const box = $("routineActivities");
+    if (!box) return;
+
+    box.replaceChildren();
+
+    const total = routineItems.length;
+    const completed = routineItems.filter(item =>
+      routineLogs[item.id]?.status === "completed"
+    ).length;
+
+    if ($("routineProgressText")) {
+      $("routineProgressText").textContent =
+        `${completed} of ${total} activities completed today`;
+    }
+
+    if ($("routineProgressBar")) {
+      const percentage = total ? (completed / total) * 100 : 0;
+      $("routineProgressBar").style.width = `${percentage}%`;
+    }
+
+    if (!selectedRoutineId || !total) {
+      const empty = document.createElement("p");
+      empty.className = "routine-empty";
+      empty.textContent = selectedRoutineId
+        ? "This routine has no activities yet. Add your first activity."
+        : "Select a routine or create a new one to get started.";
+      box.appendChild(empty);
+      return;
+    }
+
+    routineItems.forEach((item, index) => {
+      const card = document.createElement("article");
+      card.className = "routine-activity";
+
+      const details = document.createElement("div");
+      details.className = "routine-activity-details";
+
+      const heading = document.createElement("strong");
+      heading.textContent = item.title;
+
+      const time = document.createElement("span");
+      time.textContent = item.scheduled_time
+        ? item.scheduled_time.slice(0, 5)
+        : "No time set";
+
+      const description = document.createElement("p");
+      description.textContent = item.description || "";
+
+      const log = routineLogs[item.id];
+      const status = document.createElement("span");
+      status.className = "routine-activity-status";
+      status.textContent = log?.status
+        ? log.status.charAt(0).toUpperCase() + log.status.slice(1)
+        : "Pending";
+
+      if (log?.status) status.dataset.status = log.status;
+
+      details.append(heading, time, description, status);
+
+      const actions = document.createElement("div");
+      actions.className = "routine-activity-actions";
+
+      actions.append(
+        makeRoutineButton("Complete", () => updateRoutineStatus(item, "completed")),
+        makeRoutineButton("Skip", () => updateRoutineStatus(item, "skipped")),
+        makeRoutineButton("Postpone", () => postponeRoutineItem(item))
+      );
+
+      actions.append(
+        makeRoutineButton("Edit", () => editRoutineItem(item)),
+        makeRoutineButton("Move up", () => moveRoutineItem(index, -1), index === 0),
+        makeRoutineButton("Move down", () => moveRoutineItem(index, 1), index === total - 1),
+        makeRoutineButton("Delete", () => deleteRoutineItem(item))
+      );
+
+      card.append(details, actions);
+      box.appendChild(card);
+    });
+  }
+
+  function makeRoutineButton(label, action, disabled = false) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "routine-action-button";
+    button.textContent = label;
+    button.disabled = disabled;
+    button.onclick = action;
+    return button;
+  }
+
+  async function createRoutineFromDescription(description) {
+    if (!session) throw new Error("Please sign in again.");
+
+    const response = await fetch("/api/routines/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ description })
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || "Sky couldn't generate your routine.");
+    }
+
+    const generated = result.routine;
+
+    if (
+      !generated ||
+      !generated.title ||
+      !Array.isArray(generated.items) ||
+      !generated.items.length
+    ) {
+      throw new Error("Sky returned an incomplete routine. Please try again.");
+    }
+
+    const { data: savedRoutine, error: routineError } = await supabaseClient
+      .from("routines")
+      .insert({
+        user_id: session.user.id,
+        title: generated.title,
+        description: generated.description || description,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (routineError) throw routineError;
+
+    const items = generated.items.map((item, index) => ({
+      routine_id: savedRoutine.id,
+      user_id: session.user.id,
+      title: item.title || `Activity ${index + 1}`,
+      description: item.description || "",
+      scheduled_time: item.scheduled_time || null,
+      position: index
+    }));
+
+    const { error: itemsError } = await supabaseClient
+      .from("routine_items")
+      .insert(items);
+
+    if (itemsError) {
+      // Remove the new routine if its activities couldn't be saved.
+      await supabaseClient
+        .from("routines")
+        .delete()
+        .eq("id", savedRoutine.id)
+        .eq("user_id", session.user.id);
+
+      throw itemsError;
+    }
+
+    selectedRoutineId = savedRoutine.id;
+    await loadRoutines();
+
+    return savedRoutine;
+  }
+
+  async function generateRoutineFromForm() {
+    const description = $("routineDescription")?.value.trim();
+
+    if (!description) {
+      showRoutineMessage("Please describe what you want your routine to help you achieve.", true);
+      return;
+    }
+
+    const button = $("generateRoutineButton");
+    if (button) button.disabled = true;
+
+    showRoutineMessage("Sky is building your routine...");
+
+    try {
+      const routine = await createRoutineFromDescription(description);
+      if ($("routineDescription")) $("routineDescription").value = "";
+
+      showRoutineMessage(`"${routine.title}" has been created and saved.`);
+    } catch (error) {
+      console.error("Routine generation error:", error);
+      showRoutineMessage(error.message || "Couldn't create your routine.", true);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function updateRoutineStatus(item, status) {
+    if (!session) return;
+
+    const payload = {
+      routine_item_id: item.id,
+      user_id: session.user.id,
+      scheduled_date: localDate(),
+      status,
+      completed_at: status === "completed" ? new Date().toISOString() : null,
+      postponed_to: null
+    };
+
+    const { error } = await supabaseClient
+      .from("routine_item_logs")
+      .upsert(payload, {
+        onConflict: "routine_item_id,scheduled_date"
+      });
+
+    if (error) {
+      console.error("Routine status update error:", error);
+      showRoutineMessage("Couldn't update activity: " + error.message, true);
+      return;
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function postponeRoutineItem(item) {
+    const date = window.prompt(
+      "What date should this activity be postponed to? Use YYYY-MM-DD.",
+      tomorrowDate()
+    );
+
+    if (date === null) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date <= localDate()) {
+      showRoutineMessage("Please enter a future date in YYYY-MM-DD format.", true);
+      return;
+    }
+
+    const payload = {
+      routine_item_id: item.id,
+      user_id: session.user.id,
+      scheduled_date: localDate(),
+      status: "postponed",
+      postponed_to: date,
+      completed_at: null
+    };
+
+    const { error } = await supabaseClient
+      .from("routine_item_logs")
+      .upsert(payload, {
+        onConflict: "routine_item_id,scheduled_date"
+      });
+
+    if (error) {
+      showRoutineMessage("Couldn't postpone activity: " + error.message, true);
+      return;
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function addRoutineActivity() {
+    if (!selectedRoutineId) {
+      showRoutineMessage("Please select a routine first.", true);
+      return;
+    }
+
+    const title = window.prompt("What is the activity called?");
+    if (!title?.trim()) return;
+
+    const description = window.prompt("Add a short description (optional).", "") || "";
+    const timeInput = window.prompt("What time? Use 24-hour format HH:MM, or leave blank.", "");
+
+    let time = null;
+    if (timeInput?.trim()) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeInput.trim())) {
+        showRoutineMessage("Please enter the time in HH:MM format.", true);
+        return;
+      }
+      time = timeInput.trim();
+    }
+
+    const { error } = await supabaseClient
+      .from("routine_items")
+      .insert({
+        routine_id: selectedRoutineId,
+        user_id: session.user.id,
+        title: title.trim(),
+        description: description.trim(),
+        scheduled_time: time,
+        position: routineItems.length
+      });
+
+    if (error) {
+      showRoutineMessage("Couldn't add activity: " + error.message, true);
+      return;
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function editRoutineItem(item) {
+    const title = window.prompt("Edit activity name:", item.title);
+    if (!title?.trim()) return;
+
+    const description = window.prompt(
+      "Edit activity description:",
+      item.description || ""
+    );
+
+    if (description === null) return;
+
+    const oldTime = item.scheduled_time
+      ? item.scheduled_time.slice(0, 5)
+      : "";
+
+    const timeInput = window.prompt(
+      "Edit time (HH:MM), or leave blank:",
+      oldTime
+    );
+
+    if (timeInput === null) return;
+
+    let time = null;
+    if (timeInput.trim()) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeInput.trim())) {
+        showRoutineMessage("Please enter the time in HH:MM format.", true);
+        return;
+      }
+      time = timeInput.trim();
+    }
+
+    const { error } = await supabaseClient
+      .from("routine_items")
+      .update({
+        title: title.trim(),
+        description: description.trim(),
+        scheduled_time: time
+      })
+      .eq("id", item.id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      showRoutineMessage("Couldn't edit activity: " + error.message, true);
+      return;
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function deleteRoutineItem(item) {
+    if (!window.confirm(`Delete "${item.title}" from this routine?`)) return;
+
+    const { error } = await supabaseClient
+      .from("routine_items")
+      .delete()
+      .eq("id", item.id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      showRoutineMessage("Couldn't delete activity: " + error.message, true);
+      return;
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function moveRoutineItem(index, direction) {
+    const otherIndex = index + direction;
+    if (otherIndex < 0 || otherIndex >= routineItems.length) return;
+
+    const first = routineItems[index];
+    const second = routineItems[otherIndex];
+
+    const firstUpdate = await supabaseClient
+      .from("routine_items")
+      .update({ position: second.position })
+      .eq("id", first.id)
+      .eq("user_id", session.user.id);
+
+    if (firstUpdate.error) {
+      showRoutineMessage("Couldn't reorder activities: " + firstUpdate.error.message, true);
+      return;
+    }
+
+    const secondUpdate = await supabaseClient
+      .from("routine_items")
+      .update({ position: first.position })
+      .eq("id", second.id)
+      .eq("user_id", session.user.id);
+
+    if (secondUpdate.error) {
+      showRoutineMessage("Couldn't finish reordering: " + secondUpdate.error.message, true);
+    }
+
+    await selectRoutine(selectedRoutineId);
+  }
+
+  async function editSelectedRoutine() {
+    const routine = routines.find(item => item.id === selectedRoutineId);
+    if (!routine) return;
+
+    const title = window.prompt("Routine name:", routine.title);
+    if (!title?.trim()) return;
+
+    const description = window.prompt(
+      "Routine description:",
+      routine.description || ""
+    );
+
+    if (description === null) return;
+
+    const { error } = await supabaseClient
+      .from("routines")
+      .update({
+        title: title.trim(),
+        description: description.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", routine.id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      showRoutineMessage("Couldn't update routine: " + error.message, true);
+      return;
+    }
+
+    await loadRoutines();
+  }
+
+  // Detect clear routine-building requests made in normal Sky chat.
+  function isRoutineRequest(text) {
+    return /\b(create|make|build|generate|design|plan)\b[\s\S]{0,100}\b(routine|daily schedule|daily plan)\b|\b(routine)\b[\s\S]{0,100}\b(create|make|build|generate|design|plan)\b/i.test(text);
+  }
+
+  function routineChatReply(routine) {
+    const lines = (routineItems || []).map(item => {
+      const time = item.scheduled_time
+        ? ` — ${item.scheduled_time.slice(0, 5)}`
+        : "";
+      return `• ${item.title}${time}`;
+    });
+
+    return `I've created and saved your routine, "${routine.title}".\n\nYou can find it in the Routine Builder tab, where you can edit activities, change their order, and track your progress.\n\n${lines.join("\n")}`;
+  }
+
+  // ---------- EXISTING SKY APP ----------
 
   async function init() {
     try {
@@ -132,6 +763,7 @@
     if (!session) return;
 
     show("chatScreen");
+    showWorkspace("chat");
 
     if ($("userEmail")) {
       $("userEmail").textContent = session.user.email || "Signed in";
@@ -139,6 +771,7 @@
 
     currentConversation = null;
     await loadConversations();
+    await loadRoutines();
 
     if (!currentConversation && conversations.length > 0) {
       await openConversation(conversations[0].id);
@@ -186,12 +819,9 @@
         (conversation.id === currentConversation ? " selected" : "");
 
       button.textContent = conversation.title || "New conversation";
-
       button.type = "button";
 
-      button.onclick = () => {
-        openConversation(conversation.id);
-      };
+      button.onclick = () => openConversation(conversation.id);
 
       list.appendChild(button);
     });
@@ -222,9 +852,9 @@
 
     renderHistory();
     showWelcomeMessage();
+    showWorkspace("chat");
   }
 
-  // Improved chat-history loading.
   async function openConversation(id) {
     if (!session || !supabaseClient || !id) return;
 
@@ -256,17 +886,12 @@
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: true });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      // Ignore an older request if another chat was selected.
       if (
         requestNumber !== conversationLoadNumber ||
         currentConversation !== id
-      ) {
-        return;
-      }
+      ) return;
 
       messagesBox.replaceChildren();
 
@@ -276,10 +901,7 @@
       }
 
       data.forEach(message => {
-        if (
-          message.role === "user" ||
-          message.role === "assistant"
-        ) {
+        if (["user", "assistant"].includes(message.role)) {
           addMessage(message.content, message.role);
         }
       });
@@ -292,12 +914,9 @@
       if (
         requestNumber !== conversationLoadNumber ||
         currentConversation !== id
-      ) {
-        return;
-      }
+      ) return;
 
       messagesBox.replaceChildren();
-
       addMessage(
         `Couldn't load this conversation: ${error.message || "Please try again."}`
       );
@@ -322,9 +941,7 @@
 
     const { error: updateError } = await supabaseClient
       .from("conversations")
-      .update({
-        updated_at: new Date().toISOString()
-      })
+      .update({ updated_at: new Date().toISOString() })
       .eq("id", currentConversation)
       .eq("user_id", session.user.id);
 
@@ -346,9 +963,7 @@
 
     return (data || [])
       .reverse()
-      .filter(message =>
-        ["user", "assistant"].includes(message.role)
-      )
+      .filter(message => ["user", "assistant"].includes(message.role))
       .map(message => ({
         role: message.role,
         content: message.content
@@ -365,10 +980,7 @@
       return;
     }
 
-    if (!currentConversation) {
-      await createConversation();
-    }
-
+    if (!currentConversation) await createConversation();
     if (!currentConversation) return;
 
     const conversationAtSend = currentConversation;
@@ -384,7 +996,6 @@
 
     $("prompt").value = "";
     resize();
-
     $("sendButton").disabled = true;
 
     try {
@@ -397,13 +1008,20 @@
         addMessage(note);
         await save("assistant", note);
 
+      } else if (isRoutineRequest(text)) {
+        // Create and save a routine directly from normal Sky chat.
+        const routine = await createRoutineFromDescription(text);
+
+        if (currentConversation !== conversationAtSend) return;
+
+        const reply = routineChatReply(routine);
+        addMessage(reply);
+        await save("assistant", reply);
+
       } else {
         const history = await getRecentHistory();
 
-        if (
-          history.length &&
-          history[history.length - 1].role === "user"
-        ) {
+        if (history.length && history[history.length - 1].role === "user") {
           history.pop();
         }
 
@@ -413,18 +1031,13 @@
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({
-            prompt: text,
-            history
-          })
+          body: JSON.stringify({ prompt: text, history })
         });
 
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          throw new Error(
-            result.error || "Sky couldn't get an AI response."
-          );
+          throw new Error(result.error || "Sky couldn't get an AI response.");
         }
 
         if (currentConversation !== conversationAtSend) return;
@@ -495,8 +1108,7 @@
     if (!prompt) return;
 
     prompt.style.height = "auto";
-    prompt.style.height =
-      Math.min(prompt.scrollHeight, 150) + "px";
+    prompt.style.height = Math.min(prompt.scrollHeight, 150) + "px";
   }
 
   function voice() {
@@ -552,6 +1164,8 @@
     recognition.start();
   }
 
+  // ---------- EXISTING BUTTONS AND EVENTS ----------
+
   if ($("year")) {
     $("year").textContent = new Date().getFullYear();
   }
@@ -568,9 +1182,7 @@
     authMode = mode;
 
     $("authTitle").textContent =
-      mode === "login"
-        ? "Welcome back"
-        : "Create your Sky account";
+      mode === "login" ? "Welcome back" : "Create your Sky account";
 
     $("authDescription").textContent =
       mode === "login"
@@ -590,7 +1202,6 @@
       mode === "login" ? "current-password" : "new-password";
 
     $("authMessage").textContent = "";
-
     show("authScreen");
   }
 
@@ -612,9 +1223,7 @@
         ? await supabaseClient.auth.signUp({
             email,
             password,
-            options: {
-              emailRedirectTo: location.origin
-            }
+            options: { emailRedirectTo: location.origin }
           })
         : await supabaseClient.auth.signInWithPassword({
             email,
@@ -647,6 +1256,10 @@
     session = null;
     currentConversation = null;
     conversations = [];
+    routines = [];
+    routineItems = [];
+    routineLogs = {};
+    selectedRoutineId = null;
     conversationLoadNumber++;
 
     show("welcomeScreen");
@@ -691,6 +1304,35 @@
   $("closeSidebar").onclick = () => {
     $("sidebar").classList.remove("open");
   };
+
+  // ---------- ROUTINE BUILDER BUTTONS ----------
+
+  $("chatTabButton")?.addEventListener("click", () => {
+    showWorkspace("chat");
+  });
+
+  $("routineTabButton")?.addEventListener("click", () => {
+    showWorkspace("routine");
+  });
+
+  $("routineOpenSidebar")?.addEventListener("click", () => {
+    showWorkspace("routine");
+  });
+
+  $("generateRoutineButton")?.addEventListener("click", generateRoutineFromForm);
+
+  $("newRoutineButton")?.addEventListener("click", () => {
+    showWorkspace("routine");
+    if ($("routineDescription")) {
+      $("routineDescription").value = "";
+      $("routineDescription").focus();
+    }
+    showRoutineMessage("Describe your goals and Sky will build a routine for you.");
+  });
+
+  $("addRoutineActivityButton")?.addEventListener("click", addRoutineActivity);
+
+  $("editRoutineButton")?.addEventListener("click", editSelectedRoutine);
 
   document.querySelectorAll(".suggestion").forEach(button => {
     button.onclick = () => {
