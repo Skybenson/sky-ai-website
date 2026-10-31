@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d19">
+  <title>Sky Admin Dashboard</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/admin.js?v=1" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">S</span><span>SKY <small>ADMIN</small></span></a>
+      <a class="back-link" href="/">Back to Sky ↗</a>
+    </header>
+
+    <main>
+      <section id="loadingPanel" class="panel loading-panel">
+        <div class="spinner"></div>
+        <p>Loading Sky Admin…</p>
+      </section>
+
+      <section id="loginPanel" class="panel login-panel hidden">
+        <div class="eyebrow">PRIVATE ADMIN AREA</div>
+        <h1>Sign in to Sky Admin</h1>
+        <p class="muted">Use your administrator Sky account to view website statistics.</p>
+        <form id="loginForm">
+          <label>Email address
+            <input id="adminEmail" type="email" autocomplete="username" required placeholder="Your admin email">
+          </label>
+          <label>Password
+            <input id="adminPassword" type="password" autocomplete="current-password" required placeholder="Your Sky password">
+          </label>
+          <button class="primary-button" id="loginButton" type="submit">Sign in</button>
+        </form>
+        <p id="loginMessage" class="message" role="status"></p>
+      </section>
+
+      <section id="deniedPanel" class="panel login-panel hidden">
+        <div class="denied-icon">!</div>
+        <h1>Admin access only</h1>
+        <p class="muted">This account is not authorized to view Sky statistics.</p>
+        <button id="deniedLogout" class="secondary-button">Sign out</button>
+      </section>
+
+      <section id="dashboardPanel" class="hidden">
+        <div class="dashboard-heading">
+          <div>
+            <div class="eyebrow">OVERVIEW</div>
+            <h1>Sky Admin Dashboard</h1>
+            <p class="muted">Website growth and usage at a glance.</p>
+          </div>
+          <div class="heading-actions">
+            <span id="lastUpdated" class="muted small"></span>
+            <button id="refreshButton" class="secondary-button">↻ Refresh</button>
+            <button id="logoutButton" class="secondary-button">Sign out</button>
+          </div>
+        </div>
+
+        <div id="dashboardError" class="error-banner hidden" role="alert"></div>
+
+        <section class="stats-grid">
+          <article class="stat-card"><div class="stat-label">Total users</div><div class="stat-value" id="totalUsers">—</div><div class="stat-note">Registered accounts</div></article>
+          <article class="stat-card"><div class="stat-label">New users · 7 days</div><div class="stat-value" id="newUsers7d">—</div><div class="stat-note">Recent registrations</div></article>
+          <article class="stat-card"><div class="stat-label">New users · 30 days</div><div class="stat-value" id="newUsers30d">—</div><div class="stat-note">Monthly registrations</div></article>
+          <article class="stat-card"><div class="stat-label">Active users · 30 days</div><div class="stat-value" id="activeUsers30d">—</div><div class="stat-note">Based on latest sign-in</div></article>
+          <article class="stat-card"><div class="stat-label">Conversations</div><div class="stat-value" id="totalConversations">—</div><div class="stat-note">Saved chat threads</div></article>
+          <article class="stat-card"><div class="stat-label">Messages saved</div><div class="stat-value" id="totalMessages">—</div><div class="stat-note">User and Sky replies</div></article>
+          <article class="stat-card"><div class="stat-label">User prompts</div><div class="stat-value" id="totalPrompts">—</div><div class="stat-note">Approximate AI demand, not confirmed successful calls</div></article>
+        </section>
+
+        <section class="charts-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><h2>New registrations</h2><p class="muted">Last 14 days</p></div><span class="chart-key signup-key">Sign-ups</span></div>
+            <div id="signupChart" class="bar-chart" aria-label="New registrations chart"></div>
+          </article>
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><h2>User prompts</h2><p class="muted">Last 14 days</p></div><span class="chart-key prompt-key">Prompts</span></div>
+            <div id="promptChart" class="bar-chart" aria-label="User prompts chart"></div>
+          </article>
+        </section>
+
+        <section class="panel users-panel">
+          <div class="panel-heading"><div><h2>Recent registrations</h2><p class="muted">Latest 25 accounts. Chat contents are never shown here.</p></div><span id="userCountLabel" class="pill">0 accounts</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Email</th><th>Joined</th><th>Last sign-in</th></tr></thead>
+              <tbody id="recentUsers"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+        <p class="footnote">Private to the authorized administrator. “Active users” uses Supabase's latest sign-in timestamp. “User prompts” counts saved messages from users and may include requests that did not receive an AI reply. Dates use the database date.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
