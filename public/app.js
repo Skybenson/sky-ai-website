@@ -1,3 +1,4 @@
+
 (() => {
   const $ = id => document.getElementById(id);
 
@@ -26,7 +27,6 @@
     $("sidebar")?.classList.remove("open");
   };
 
-  // Switch between the Chat and Routine Builder workspaces.
   function showWorkspace(workspace) {
     const chat = $("chatWorkspace");
     const routine = $("routineWorkspace");
@@ -37,9 +37,7 @@
     $("chatTabButton")?.classList.toggle("active", workspace === "chat");
     $("routineTabButton")?.classList.toggle("active", workspace === "routine");
 
-    if (workspace === "routine") {
-      loadRoutines();
-    }
+    if (workspace === "routine") loadRoutines();
 
     $("sidebar")?.classList.remove("open");
   }
@@ -98,7 +96,6 @@
     welcome.classList.remove("hidden");
   }
 
-  // Date helper uses the user's local calendar date.
   function localDate(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -126,6 +123,7 @@
     if (!session || !supabaseClient) return;
 
     const list = $("routineList");
+
     if (list) {
       list.replaceChildren();
       const loading = document.createElement("p");
@@ -142,6 +140,7 @@
 
     if (error) {
       console.error("Routine loading error:", error);
+
       if (list) {
         list.replaceChildren();
         const message = document.createElement("p");
@@ -176,7 +175,8 @@
     if (!routines.length) {
       const empty = document.createElement("p");
       empty.className = "routine-empty";
-      empty.textContent = "You haven't created a routine yet. Describe your goals above to build your first one.";
+      empty.textContent =
+        "You haven't created a routine yet. Describe what you want above to build your first one.";
       list.appendChild(empty);
       return;
     }
@@ -185,6 +185,7 @@
       const card = document.createElement("button");
       card.type = "button";
       card.className = "routine-card";
+
       if (routine.id === selectedRoutineId) {
         card.classList.add("selected");
       }
@@ -215,6 +216,7 @@
     }
 
     const activityBox = $("routineActivities");
+
     if (activityBox) {
       activityBox.replaceChildren();
       const loading = document.createElement("p");
@@ -232,6 +234,7 @@
 
     if (error) {
       console.error("Routine activities error:", error);
+
       if (activityBox) {
         activityBox.replaceChildren();
         const message = document.createElement("p");
@@ -317,6 +320,7 @@
       description.textContent = item.description || "";
 
       const log = routineLogs[item.id];
+
       const status = document.createElement("span");
       status.className = "routine-activity-status";
       status.textContent = log?.status
@@ -414,7 +418,6 @@
       .insert(items);
 
     if (itemsError) {
-      // Remove the new routine if its activities couldn't be saved.
       await supabaseClient
         .from("routines")
         .delete()
@@ -434,7 +437,10 @@
     const description = $("routineDescription")?.value.trim();
 
     if (!description) {
-      showRoutineMessage("Please describe what you want your routine to help you achieve.", true);
+      showRoutineMessage(
+        "Just type something simple, like Workout routine or Morning routine.",
+        true
+      );
       return;
     }
 
@@ -445,7 +451,10 @@
 
     try {
       const routine = await createRoutineFromDescription(description);
-      if ($("routineDescription")) $("routineDescription").value = "";
+
+      if ($("routineDescription")) {
+        $("routineDescription").value = "";
+      }
 
       showRoutineMessage(`"${routine.title}" has been created and saved.`);
     } catch (error) {
@@ -528,10 +537,16 @@
     const title = window.prompt("What is the activity called?");
     if (!title?.trim()) return;
 
-    const description = window.prompt("Add a short description (optional).", "") || "";
-    const timeInput = window.prompt("What time? Use 24-hour format HH:MM, or leave blank.", "");
+    const description =
+      window.prompt("Add a short description (optional).", "") || "";
+
+    const timeInput = window.prompt(
+      "What time? Use 24-hour format HH:MM, or leave blank.",
+      ""
+    );
 
     let time = null;
+
     if (timeInput?.trim()) {
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeInput.trim())) {
         showRoutineMessage("Please enter the time in HH:MM format.", true);
@@ -582,6 +597,7 @@
     if (timeInput === null) return;
 
     let time = null;
+
     if (timeInput.trim()) {
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeInput.trim())) {
         showRoutineMessage("Please enter the time in HH:MM format.", true);
@@ -627,6 +643,7 @@
 
   async function moveRoutineItem(index, direction) {
     const otherIndex = index + direction;
+
     if (otherIndex < 0 || otherIndex >= routineItems.length) return;
 
     const first = routineItems[index];
@@ -639,7 +656,10 @@
       .eq("user_id", session.user.id);
 
     if (firstUpdate.error) {
-      showRoutineMessage("Couldn't reorder activities: " + firstUpdate.error.message, true);
+      showRoutineMessage(
+        "Couldn't reorder activities: " + firstUpdate.error.message,
+        true
+      );
       return;
     }
 
@@ -650,7 +670,10 @@
       .eq("user_id", session.user.id);
 
     if (secondUpdate.error) {
-      showRoutineMessage("Couldn't finish reordering: " + secondUpdate.error.message, true);
+      showRoutineMessage(
+        "Couldn't finish reordering: " + secondUpdate.error.message,
+        true
+      );
     }
 
     await selectRoutine(selectedRoutineId);
@@ -688,16 +711,32 @@
     await loadRoutines();
   }
 
-  // Detect clear routine-building requests made in normal Sky chat.
+  // Recognize short and detailed routine requests in normal chat.
   function isRoutineRequest(text) {
-    return /\b(create|make|build|generate|design|plan)\b[\s\S]{0,100}\b(routine|daily schedule|daily plan)\b|\b(routine)\b[\s\S]{0,100}\b(create|make|build|generate|design|plan)\b/i.test(text);
+    const request = text.trim().toLowerCase();
+
+    const shortRequests =
+      /^(?:please\s+)?(?:workout|fitness|gym|morning|evening|night|daily|study|exercise|weight loss|reading)\s+(?:routine|plan|schedule)$/i;
+
+    const directRequests =
+      /\b(create|make|build|generate|design|plan|give me|suggest)\b[\s\S]{0,120}\b(routine|workout|fitness plan|daily schedule|study plan|morning routine|evening routine)\b/i;
+
+    const wantRequests =
+      /\b(i want|i need|help me create|help me make)\b[\s\S]{0,100}\b(routine|workout plan|fitness plan|study plan|daily schedule|morning routine|evening routine)\b/i;
+
+    return (
+      shortRequests.test(request) ||
+      directRequests.test(request) ||
+      wantRequests.test(request)
+    );
   }
 
   function routineChatReply(routine) {
-    const lines = (routineItems || []).map(item => {
+    const lines = routineItems.map(item => {
       const time = item.scheduled_time
         ? ` — ${item.scheduled_time.slice(0, 5)}`
         : "";
+
       return `• ${item.title}${time}`;
     });
 
@@ -820,7 +859,6 @@
 
       button.textContent = conversation.title || "New conversation";
       button.type = "button";
-
       button.onclick = () => openConversation(conversation.id);
 
       list.appendChild(button);
@@ -847,7 +885,6 @@
 
     conversations.unshift(data);
     currentConversation = data.id;
-
     conversationLoadNumber++;
 
     renderHistory();
@@ -917,6 +954,7 @@
       ) return;
 
       messagesBox.replaceChildren();
+
       addMessage(
         `Couldn't load this conversation: ${error.message || "Please try again."}`
       );
@@ -1009,7 +1047,6 @@
         await save("assistant", note);
 
       } else if (isRoutineRequest(text)) {
-        // Create and save a routine directly from normal Sky chat.
         const routine = await createRoutineFromDescription(text);
 
         if (currentConversation !== conversationAtSend) return;
@@ -1319,20 +1356,33 @@
     showWorkspace("routine");
   });
 
-  $("generateRoutineButton")?.addEventListener("click", generateRoutineFromForm);
+  $("generateRoutineButton")?.addEventListener(
+    "click",
+    generateRoutineFromForm
+  );
 
   $("newRoutineButton")?.addEventListener("click", () => {
     showWorkspace("routine");
+
     if ($("routineDescription")) {
       $("routineDescription").value = "";
       $("routineDescription").focus();
     }
-    showRoutineMessage("Describe your goals and Sky will build a routine for you.");
+
+    showRoutineMessage(
+      "Just type something simple, like Workout routine or Morning routine."
+    );
   });
 
-  $("addRoutineActivityButton")?.addEventListener("click", addRoutineActivity);
+  $("addRoutineActivityButton")?.addEventListener(
+    "click",
+    addRoutineActivity
+  );
 
-  $("editRoutineButton")?.addEventListener("click", editSelectedRoutine);
+  $("editRoutineButton")?.addEventListener(
+    "click",
+    editSelectedRoutine
+  );
 
   document.querySelectorAll(".suggestion").forEach(button => {
     button.onclick = () => {
